@@ -1,0 +1,65 @@
+#!/bin/bash
+
+echo "Digite o nome do projeto(Criar repositório vazio antes no GitHub):"
+read NOME_PROJETO
+
+echo "Digite o link do repositório do GitHub que você deseja usar como Template:"
+read TEMPLATE_REPO
+
+echo "Digite seu nome de usuário do GitHub:"
+read GITHUB_USER
+
+echo "Digite seu token de acesso pessoal (para git config):"
+read GITHUB_TOKEN
+
+echo "Digite seu e-mail (para git config):"
+read GITHUB_EMAIL
+
+# Substitui o nome do repositório com o nome do usuário no GitHub
+GITHUB_REPO_URL="https://github.com/$GITHUB_USER/$NOME_PROJETO.git"
+
+# Verifica se o Python está instalado
+if ! command -v python3 &> /dev/null; then
+  echo "Python não encontrado. Instalando..."
+  sudo apt update
+  sudo apt install python3 python3-venv python3-pip -y
+else
+  echo "Python já está instalado."
+fi
+
+echo "Configurando o nome de usuário do Git..."
+git config --global user.name "$GITHUB_USER"
+
+echo "Configurando o e-mail do Git..."
+git config --global user.email "$GITHUB_EMAIL"
+
+echo "Criando diretório do projeto: $NOME_PROJETO"
+mkdir "$NOME_PROJETO"
+cd "$NOME_PROJETO" || exit 1
+
+echo "Clonando repositório template..."
+git clone "$TEMPLATE_REPO" . || { echo "Erro ao clonar repositório"; exit 1; }
+
+echo "Substituindo nomes antigos pelo nome do novo projeto..."
+grep -rl "API_Receitas" . | xargs sed -i "s/API_Receitas/$NOME_PROJETO/g"
+
+echo "Inicializando repositório Git do zero..."
+rm -rf .git
+git init
+git add .
+git commit -m "Projeto $NOME_PROJETO iniciado a partir de template"
+
+echo "Adicionando repositório remoto..."
+git remote add origin https://$GITHUB_USER:$GITHUB_TOKEN@github.com/$GITHUB_USER/$NOME_PROJETO.git
+
+echo "Enviando o projeto para o GitHub..."
+git push -u origin master
+
+echo "Criando ambiente virtual com venv..."
+python3 -m venv venv
+source venv/bin/activate
+
+echo "Instalando dependências..."
+pip install -r requirements.txt
+
+echo "Estrutura criada com sucesso para o projeto '$NOME_PROJETO'!"
